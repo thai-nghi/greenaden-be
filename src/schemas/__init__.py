@@ -51,12 +51,17 @@ class UserRegister(UserBase):
 
 
 class UserLogin(BaseModel):
+    username: EmailStr | None
     email: EmailStr | None
     password: str | None
     google_token: str | None
+    grant_type: str | None
 
     @root_validator
-    def ensure_credentaisl(cls, values):
+    def ensure_credentals(cls, values):
+        print(values)
+        if "username" in values:
+            values["email"] = values["username"]
         if "email" not in values and "google_token" not in values:
             raise ValueError("Either email or google_token is needed")
         if "email" in values and "password" not in values:

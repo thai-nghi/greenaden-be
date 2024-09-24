@@ -57,4 +57,4 @@ async def leaderboard_of_country(
 
     result = await db_session.execute(query)
 
-    return [schemas.LeaderboardEntry(**entry) for entry in result]
+    return [schemas.LeaderboardEntry(**entry._mapping) for entry in result]

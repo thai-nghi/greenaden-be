@@ -55,6 +55,7 @@ async def user_detail_by_email(
     query = select(
         user_tbl.c.id,
         user_tbl.c.email,
+        user_tbl.c.full_name,
         user_tbl.c.points,
         user_tbl.c.city,
         user_tbl.c.country,
@@ -66,7 +67,7 @@ async def user_detail_by_email(
     if user is None:
         raise exceptions.NotFoundException
 
-    return schemas.UserResponse(**user)
+    return schemas.UserResponse(**user._mapping)
 
 
 async def get_user_by_google_id(
@@ -79,6 +80,7 @@ async def get_user_by_google_id(
         select(
             user_tbl.c.id,
             user_tbl.c.email,
+            user_tbl.c.full_name,
             user_tbl.c.points,
             user_tbl.c.city,
             user_tbl.c.country,
@@ -90,7 +92,7 @@ async def get_user_by_google_id(
 
     user = (await db_session.execute(query)).first()
 
-    return schemas.UserResponse(**user) if user is not None else None
+    return schemas.UserResponse(**user._mapping) if user is not None else None
 
 
 async def user_by_id(db_session: AsyncSession, id: int) -> schemas.UserResponse:
@@ -99,6 +101,7 @@ async def user_by_id(db_session: AsyncSession, id: int) -> schemas.UserResponse:
     query = select(
         user_tbl.c.id,
         user_tbl.c.email,
+        user_tbl.c.full_name,
         user_tbl.c.points,
         user_tbl.c.city,
         user_tbl.c.country,
@@ -110,7 +113,7 @@ async def user_by_id(db_session: AsyncSession, id: int) -> schemas.UserResponse:
     if user is None:
         raise exceptions.NotFoundException
 
-    return schemas.UserResponse(**user)
+    return schemas.UserResponse(**user._mapping)
 
 
 async def create_user_by_google_id(

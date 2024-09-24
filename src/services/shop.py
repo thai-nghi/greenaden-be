@@ -16,7 +16,7 @@ async def all_items(db_session: AsyncSession) -> list[schemas.ShopItem]:
 
     items = await db_session.execute(query)
 
-    return [schemas.ShopItem(**item) for item in items]
+    return [schemas.ShopItem(**item._mapping) for item in items]
 
 async def buy_item(db_session: AsyncSession, user_id: int, item_id: int, price: int):
 
@@ -50,4 +50,4 @@ async def item_detail(db_session: AsyncSession, item_id: int) -> schemas.ShopIte
     if result is None:
         raise exceptions.NotFoundException
     
-    return schemas.ShopItem(**result)
+    return schemas.ShopItem(**result._mapping)
