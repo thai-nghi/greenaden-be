@@ -57,6 +57,7 @@ async def user_detail_by_email(
         user_tbl.c.email,
         user_tbl.c.full_name,
         user_tbl.c.points,
+        user_tbl.c.total_points,
         user_tbl.c.city,
         user_tbl.c.country,
         user_tbl.c.rank,
@@ -82,6 +83,7 @@ async def get_user_by_google_id(
             user_tbl.c.email,
             user_tbl.c.full_name,
             user_tbl.c.points,
+            user_tbl.c.total_points,
             user_tbl.c.city,
             user_tbl.c.country,
             user_tbl.c.rank,
@@ -103,6 +105,7 @@ async def user_by_id(db_session: AsyncSession, id: int) -> schemas.UserResponse:
         user_tbl.c.email,
         user_tbl.c.full_name,
         user_tbl.c.points,
+        user_tbl.c.total_points,
         user_tbl.c.city,
         user_tbl.c.country,
         user_tbl.c.rank,
@@ -131,8 +134,10 @@ async def create_user_by_google_id(
         country="Finland",
     )
 
-    inserted_id = (await db_session.execute(query)).inserted_primary_key
+    inserted_id = (await db_session.execute(query)).inserted_primary_key[0]
 
     query = insert(google_tbl).values(google_id=google_data.sub, user_id=inserted_id)
+
+    await db_session.execute(query)
 
     return await get_user_by_google_id(db_session, google_data.sub)

@@ -27,6 +27,7 @@ class UserResponse(UserBase):
     id: int
     points: int
     rank: UserRank
+    total_points: int
 
 
 class GoogleCredentalData(BaseModel):
@@ -34,6 +35,7 @@ class GoogleCredentalData(BaseModel):
     email: str
     given_name: str
     family_name: str
+    picture: str
 
 
 class UserRegister(UserBase):
@@ -51,12 +53,10 @@ class UserRegister(UserBase):
 
 
 class UserLogin(BaseModel):
-    username: EmailStr | None
     email: EmailStr | None
     password: str | None
     google_token: str | None
-    grant_type: str | None
-
+    
     @root_validator
     def ensure_credentals(cls, values):
         print(values)
@@ -84,7 +84,7 @@ class SuccessResponseScheme(BaseModel):
     msg: str
 
 class LeaderboardEntry(BaseModel):
-    point: int
+    total_points: int
     full_name: str
     rank: UserRank
     id: int

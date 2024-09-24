@@ -34,16 +34,18 @@ async def buy_item(db_session: AsyncSession, user_id: int, item_id: int, price: 
 
     await db_session.execute(query)
 
-    query = update(user_tbl).values(points = user_tbl.c.points - price).where(user_tbl.c.id == user_id)
+    query = update(user_tbl).returning(user_tbl.c.points).where(user_tbl.c.id == user_id).values(points = user_tbl.c.points - price)
 
-    await db_session.execute(query)
+    new_point = (await db_session.execute(query)).scalar()
+
+    return new_point
 
 async def item_detail(db_session: AsyncSession, item_id: int) -> schemas.ShopItem:
-    inventory_tbl = db_tables.user_inventory
+    shop_tbl = db_tables.shop_item
 
     query = select(
-        inventory_tbl
-    ).where(inventory_tbl.c.id == item_id)
+        shop_tbl
+    ).where(shop_tbl.c.id == item_id)
 
     result = (await db_session.execute(query)).first()
 

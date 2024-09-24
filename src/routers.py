@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Response, Path
 
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.dependencies import get_db
@@ -20,13 +20,12 @@ from src import schemas
 from src.services import user as user_service
 from src.services import points as points_service
 from src.services import shop as shop_service
-from google.oauth2 import id_token
-from google.auth.transport import requests
+
+import httpx
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 @router.post("/register")
 async def register(
@@ -40,6 +39,8 @@ async def register(
         raise HTTPException(status_code=400, detail="Email has already registered")
 
     hashed_password = get_password_hash(data.password)
+
+    print(hashed_password)
 
     created_user = await user_service.create_user_by_email(
         db_session, data, hashed_password
@@ -62,14 +63,19 @@ async def login(
 ):
     if data.google_token is not None:
         # login with google
-        try:
-            idinfo = id_token.verify_oauth2_token(data.google_token, requests.Request())
-            parsed_info = schemas.GoogleCredentalData(**idinfo)
-        except ValueError:
-            # Invalid token
-            raise BadRequestException(detail="Incorrect google token")
+
+        async with httpx.AsyncClient() as http_client:
+            try:
+                user_data = await http_client.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={data.google_token}")
+                
+                parsed_info = schemas.GoogleCredentalData(**user_data.json())
+            except Exception:
+                # Invalid token
+                raise BadRequestException(detail="Incorrect google token")
 
         user = await user_service.get_user_by_google_id(db_session, parsed_info.sub)
+
+        print("Google user", user, parsed_info)
 
         if user is None:
             # a new user
@@ -79,7 +85,7 @@ async def login(
         # login with email
         password = await user_service.user_password_by_email(db_session, data.email)
 
-        if password is None or verify_password(data.password, password):
+        if not verify_password(data.password, password):
             raise BadRequestException(detail="Incorrect email or password")
 
         user = await user_service.user_detail_by_email(db_session, data.email)
@@ -90,7 +96,29 @@ async def login(
 
     await db_session.commit()
 
-    return {"token": token_pair.access.token, "user_detail": user.dict()}
+    return {"token": token_pair.access.token, "user_detail": user.dict(), "avatar": parsed_info.picture}
+
+
+@router.post("/token")
+async def login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    response: Response,
+    db_session: AsyncSession = Depends(get_db),
+):
+    password = await user_service.user_password_by_email(db_session, form_data.username)
+
+    print(get_password_hash(form_data.password))
+
+    if not verify_password(form_data.password, password):
+        raise BadRequestException(detail="Incorrect email or password")
+
+    user = await user_service.user_detail_by_email(db_session, form_data.username)
+
+    token_pair = create_token_pair(user=user)
+
+    add_refresh_token_cookie(response=response, token=token_pair.refresh.token)
+
+    return {"access_token": token_pair.access.token, "token_type": "bearer"}
 
 
 async def get_current_user(
@@ -99,11 +127,20 @@ async def get_current_user(
 ) -> schemas.UserResponse:
     payload = await decode_access_token(token=token)
 
-    return await user_service.user_by_id(db_session, payload[SUB])
+    return await user_service.user_by_id(db_session, int(payload[SUB]))
+
+@router.get("/user/{user_id}", response_model=schemas.UserResponse)
+async def user_info(
+    user: Annotated[schemas.UserResponse, Depends(get_current_user)],
+    db_session: AsyncSession = Depends(get_db),
+    user_id: int = Path()
+) -> schemas.UserResponse:
+    
+    return await user_service.user_by_id(db_session, user_id)
 
 
-@router.get("/add_point", response_model=schemas.UserResponse)
-async def articles(
+@router.post("/add_point", response_model=schemas.UserResponse)
+async def add_point(
     user: Annotated[schemas.UserResponse, Depends(get_current_user)],
     db_session: AsyncSession = Depends(get_db),
 ) -> schemas.UserResponse:
@@ -149,6 +186,8 @@ async def buy_item(
     if user.points < item_detail.price:
         raise BadRequestException("User does not have enough points")
 
-    await shop_service.buy_item(db_session, user.id, item_id, item_detail.price)
+    new_point = await shop_service.buy_item(db_session, user.id, item_id, item_detail.price)
 
     await db_session.commit()
+
+    return {"points": new_point}

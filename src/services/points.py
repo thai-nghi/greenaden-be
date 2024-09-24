@@ -26,13 +26,15 @@ async def add_point_for_user(
     update_query = (
         update(user_table)
         .values(
-            total_point=user_table.c.total_points + point,
-            point=user_table.c.point + point,
+            total_points=user_table.c.total_points + point,
+            points=user_table.c.points + point,
         )
         .where(user_table.c.id == user_id)
     )
 
     await db_session.execute(update_query)
+
+    print("During add point", type(user_id))
 
     return await user.user_by_id(db_session, user_id)
 

@@ -9,13 +9,13 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
 
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRES_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRES_MINUTES: int = 500
     REFRESH_TOKEN_EXPIRES_MINUTES: int = 15 * 24 * 60  # 15 days
 
     SECRET_KEY: str
 
     class Config:
-        env_file = '.env'
+        env_file = '.dev.env'
         env_file_encoding = 'utf-8'
 
 
