@@ -7,9 +7,8 @@ from fastapi import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import config
-from src.schemas import User, TokenPair, JwtTokenSchema
+from src.schemas import TokenPair, JwtTokenSchema, UserResponse
 from src.exceptions import AuthFailedException
-from src.models import BlackListToken
 
 
 REFRESH_COOKIE_NAME = "refresh"
@@ -17,6 +16,7 @@ SUB = "sub"
 EXP = "exp"
 IAT = "iat"
 JTI = "jti"
+
 
 def _get_utc_now():
     if sys.version_info >= (3, 2):
@@ -26,6 +26,7 @@ def _get_utc_now():
         # For older versions of Python
         current_utc_time = datetime.utcnow()
     return current_utc_time
+
 
 def _create_access_token(payload: dict, minutes: int | None = None) -> JwtTokenSchema:
     expire = _get_utc_now() + timedelta(
@@ -57,7 +58,7 @@ def _create_refresh_token(payload: dict) -> JwtTokenSchema:
     return token
 
 
-def create_token_pair(user: User) -> TokenPair:
+def create_token_pair(user: UserResponse) -> TokenPair:
     payload = {SUB: str(user.id), JTI: str(uuid.uuid4()), IAT: _get_utc_now()}
 
     return TokenPair(
@@ -66,12 +67,9 @@ def create_token_pair(user: User) -> TokenPair:
     )
 
 
-async def decode_access_token(token: str, db: AsyncSession):
+async def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
-        black_list_token = await BlackListToken.find_by_id(db=db, id=payload[JTI])
-        if black_list_token:
-            raise JWTError("Token is blacklisted")
     except JWTError:
         raise AuthFailedException()
 
@@ -86,12 +84,6 @@ def refresh_token_state(token: str):
         raise AuthFailedException()
 
     return {"token": _create_access_token(payload=payload).token}
-
-
-def mail_token(user: User):
-    """Return 2 hour lifetime access_token"""
-    payload = {SUB: str(user.id), JTI: str(uuid.uuid4()), IAT: _get_utc_now()}
-    return _create_access_token(payload=payload, minutes=2 * 60).token
 
 
 def add_refresh_token_cookie(response: Response, token: str):

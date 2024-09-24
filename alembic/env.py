@@ -4,10 +4,10 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import async_engine_from_config, create_async_engine
 
 from alembic import context
-from src.models import Base
+from src import db_tables
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,33 +18,21 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Add Data Base Url from .env
-section = config.config_ini_section
-config.set_section_option(
-    section, "POSTGRES_USER", os.environ.get("POSTGRES_USER", "user")
-)
-config.set_section_option(
-    section, "POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "user")
-)
-config.set_section_option(
-    section, "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "0.0.0.0")
-)
-config.set_section_option(
-    section, "POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432")
-)
-config.set_section_option(section, "POSTGRES_DB", os.environ.get("POSTGRES_DB", "user"))
-
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = [Base.metadata]
+target_metadata = db_tables.metadata_obj
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+cmd_line_url = context.get_x_argument(
+    as_dictionary=True).get('db_url')
+
+print(cmd_line_url)
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -58,7 +46,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = cmd_line_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -82,12 +70,14 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    if cmd_line_url:
+        connectable = create_async_engine(cmd_line_url)
+    else:
+        connectable = async_engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

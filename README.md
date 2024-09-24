@@ -29,3 +29,8 @@ pip install -r requirements.txt
 chmod 755 start.sh
 sh start.sh
 ```
+
+
+```bash
+alembic -x db_url="postgresql+asyncpg://greenaden:test@127.0.0.1/greenaden" revision --autogenerate
+```
