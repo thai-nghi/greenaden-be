@@ -23,6 +23,8 @@ services:
       context: .
       dockerfile: ./Dockerfile
     restart: always
+    environment:
+      - POSTGRES_HOST=postgres
     env_file:
       - .dev.env
     ports:
