@@ -1,15 +1,12 @@
-# FastAPI JWT Authentication example
-
-This project includes authentication APIs (login, register, verify, forgot-password, reset-password, update-password) and article list and create APIs. It uses an async PostgreSQL connection with SqlAlchemy ORM. There is an alembic config also.
-
-## Installation
+## Run with docker
 - If you want to run docker you need to [install docker](https://docs.docker.com/engine/install/)
-- Configure your postgresql
+
 - Create .env from .env.example
 ```bash
-cp .env.example .env
+cp .env.example .dev.env
 ```
-- Add Postgresql config to .env
+- Fill .dev.env with data you want for your postgresql. Docker will use these data to create the database for you
+
 - Run docker
 ```bash
 docker-compose up -d --build
@@ -18,7 +15,9 @@ or
 ```bash
 docker compose up -d --build
 ```
-### if you want to run this app without docker
+## Run Without docker
+- Start your Postgresql server and create a database, user.
+- Create .env file like above, then fill in with postgres data you configured above
 - Add Postgresql config to alembic/env.py and src/core/config.py
 - Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements.txt.
 ```bash
